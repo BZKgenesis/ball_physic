@@ -188,7 +188,7 @@ int main()
     int nbParticule_MAX = 1500;
     int count = 0;
     sf::SoundBuffer buffer;
-    if (!buffer.loadFromFile("sound.wav"))
+    if (!buffer.loadFromFile("res/sound.wav"))
         std::cout << "test" << std::endl;
     sf::Sound sound;
     sound.setBuffer(buffer);
@@ -203,7 +203,6 @@ int main()
     for (int i = 0; i < 200; i++) {
         fps_values[i] = 0;
     }
-
 
 
 
