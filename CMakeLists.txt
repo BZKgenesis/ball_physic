@@ -12,13 +12,23 @@ FetchContent_Declare(SFML
     EXCLUDE_FROM_ALL
     SYSTEM)
 FetchContent_MakeAvailable(SFML)
+# Liste des fichiers sources
+set(SOURCES
+    src/main.cpp
+    src/Vector2Math.cpp
+    src/TransformViewManager.cpp
+)
 
-add_executable(${PROJECT_NAME} src/main.cpp)
-target_link_libraries(${PROJECT_NAME} PRIVATE sfml-graphics)
-target_link_libraries(${PROJECT_NAME} PRIVATE sfml-audio)
+# Ajout de l'exécutable
+add_executable(${PROJECT_NAME} ${SOURCES})
+
+# Lien avec les bibliothèques SFML
+target_link_libraries(${PROJECT_NAME} PRIVATE sfml-graphics sfml-audio)
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_17)
+# Inclure le répertoire src pour les headers
+target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/src)
 
-# Copy res dir to the binary directory
+# Copie du répertoire res
 add_custom_command(
     TARGET ${PROJECT_NAME}
     COMMENT "Copy Res directory"
