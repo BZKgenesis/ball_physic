@@ -2,8 +2,11 @@
 #include <SFML/Audio.hpp>
 #include <iostream>
 #include <algorithm>
+#include <sstream>
+#include <string>
 #include "Vector2Math.h"
 #include "TransformViewManager.h"
+#include "ColorUtils.h"
 
 int H = 720;
 int W = 1280;
@@ -36,6 +39,15 @@ struct element {
     sf::RectangleShape rect;
 };
 
+std::string to_string_custom(double value) {
+    std::ostringstream oss;
+    oss.precision(16);  // Définir la précision souhaitée (par exemple 16 chiffres significatifs)
+    oss << std::noshowpoint << value;  // Supprime l'affichage des zéros inutiles
+    return oss.str();
+}
+
+
+
 //Returns length of a given vector
 class Particle {
 public:
@@ -44,8 +56,8 @@ public:
     sf::Vector2f old_pos = pos;
     float size;
     sf::Vector2f acc;
-    sf::Color color = sf::Color(255, 255, 255);
-    Particle(sf::Vector2f position, sf::Vector2f velocity, float size) : pos(position), acc(velocity), size(size) {};
+    sf::Color color;
+    Particle(sf::Vector2f position, sf::Vector2f velocity, float size, sf::Color color) : pos(position), acc(velocity), size(size), color(color) {};
 
 
     void draw(sf::RenderWindow& win) {
@@ -74,23 +86,46 @@ public:
 std::vector<Particle> particules;
 
 
-
-sf::Color lerp(sf::Color a, sf::Color b, float t) {
-    return sf::Color(a.r + (b.r - a.r) * t, a.g + (b.g - a.g) * t, a.b + (b.b - a.b) * t);
+void processEvtCollisionWindow(Particle& part) {
+    if (part.pos.x < part.size + margin) {
+        part.pos.x = part.size + margin;
+    }if (part.pos.x > W - (part.size + margin)) {
+        part.pos.x = W - (part.size + margin);
+    }
+    if (part.pos.y < part.size + margin) {
+        part.pos.y = part.size + margin;
+    }if (part.pos.y > H - (part.size + margin)) {
+        part.pos.y = H - (part.size + margin);
+    }
 }
+
+void processEvtCollisionCirlce(Particle& part, float radius) {
+    if ( Vect2Maths::length(part.pos - sf::Vector2f(W / 2, H / 2)) > (radius-part.size)) {
+        part.pos -= Vect2Maths::normalise((part.pos) - sf::Vector2f(W / 2, H / 2)) * (Vect2Maths::length((part.pos) - sf::Vector2f(W / 2, H / 2))- (radius - part.size));
+    }
+}
+
+
 
 
 int main()
 {
-    sf::RenderWindow window(sf::VideoMode(W, H), "Physic", sf::Style::Close);
+    sf::RenderWindow window(sf::VideoMode(W, H), "Physic");
     window.setFramerateLimit(120);
     sf::Clock deltaClock;
 
 	view = window.getDefaultView();
 
+	bool fullscreen = false;
+
+	double time = 0;
+	double lastSpawn = 0;
+	float spawnRate = 10.0f;
+	float speed = 1.0f;
+
 
     int nbParticule = 0;
-    int nbParticule_MAX = 1500;
+    int nbParticule_MAX = 1000;
     int count = 0;
     sf::SoundBuffer buffer;
     if (!buffer.loadFromFile("res/sound.wav"))
@@ -99,9 +134,25 @@ int main()
     sound.setBuffer(buffer);
     //sound.play();
 
+    sf::Font font;
+    if (!font.loadFromFile("res/arial.ttf"))
+    {
+        std::cout << "error" << std::endl;
+    }
+
+	sf::Text text = sf::Text("test", font, 24);
+	text.setFillColor(sf::Color::White);
+
     float mvtMax = 0;
 
     int fps_values[200];
+
+	float spawnVelocity = 750.f;
+	float spawnAngle = 3.1415/2.0f;
+	float spawnAngleSpeed = 0.01f;
+	float spawnAngleWidth = 1.f;
+
+	bool spawning = true;
 
     for (int i = 0; i < 200; i++) {
         fps_values[i] = 0;
@@ -109,10 +160,23 @@ int main()
 
     while (window.isOpen())
     {
+        sf::Time true_dt = deltaClock.restart();//récup valeur du timer + redémmarer (fps)
+        sf::Time dt = true_dt * speed;
+        float deltaT = dt.asSeconds();
+        float fps = 1.0f / true_dt.asSeconds();
+        for (int i = 0; i < 199; i++) {
+            fps_values[i] = fps_values[i + 1];
+        }
+        fps_values[199] = fps;
+        float fps_moy = 0;
+        for (int i = 0; i < 200; i++) {
+            fps_moy += fps_values[i] / 200.0f;
+        }
+		time += deltaT;
         sf::Event event;
         while (window.pollEvent(event))
         {
-			TransformViewManager::TransformView(moving, oldPos, zoom, view, window, event);
+			TransformViewManager::TransformView(moving, oldPos, zoom, view, window, event,W,H);
             switch (event.type){
                 case sf::Event::Closed:
                     window.close(); //propulsion autour de la souris when press space
@@ -127,12 +191,60 @@ int main()
                             particules[i].acc += force;
                         }
                     }
+					if (sf::Keyboard::isKeyPressed(sf::Keyboard::R)) {
+						particules.clear();
+						nbParticule = 0;
+					}
+                    if (sf::Keyboard::isKeyPressed(sf::Keyboard::F11)) {
+						if (fullscreen) {
+							fullscreen = false;
+							W = 1280;
+							H = 720;
+							window.create(sf::VideoMode(W, H), "Physic");
+                            window.setFramerateLimit(120);
+                            view.setSize(W, H);
+                            view.zoom(zoom);
+                            window.setView(view);
+						}
+						else {
+							fullscreen = true;
+							W = sf::VideoMode::getFullscreenModes()[0].width;
+							H = sf::VideoMode::getFullscreenModes()[0].height;
+						    window.create(sf::VideoMode::getFullscreenModes()[0], "Physic", sf::Style::Fullscreen);
+                            window.setFramerateLimit(120);
+                            view.setSize(W, H);
+                            view.zoom(zoom);
+                            window.setView(view);
+						}
+                    }
+					if (sf::Keyboard::isKeyPressed(sf::Keyboard::Escape)) {
+						window.close();
+					}
+					if (sf::Keyboard::isKeyPressed(sf::Keyboard::Add)) {
+						speed *= 1.1f;
+					}
+					if (sf::Keyboard::isKeyPressed(sf::Keyboard::Subtract)) {
+						speed *= 0.9f;
+					}
+					if (sf::Keyboard::isKeyPressed(sf::Keyboard::Numpad0)) {
+						speed = 1.f;
+					}
+					if (sf::Keyboard::isKeyPressed(sf::Keyboard::Multiply)) {
+                        if (spawning) {
+							spawning = false;
+						}
+                        else {
+							spawning = true;
+						}
+					}
 					break;
                 case sf::Event::Resized:
                 {
                     // update the view to the new size of the window
-                    sf::FloatRect visibleArea(0, 0, event.size.width, event.size.height);
-                    window.setView(sf::View(visibleArea));
+					view.setSize(event.size.width, event.size.height);
+					view.zoom(zoom);
+                    //sf::FloatRect visibleArea(0, 0, event.size.width, event.size.height);
+                    window.setView(view);
 				    H = event.size.height;
 				    W = event.size.width;
                     break;
@@ -141,44 +253,26 @@ int main()
             }
         }
         count++;
-        if (nbParticule < nbParticule_MAX && count % 2 == 0) {
+        if (spawning && nbParticule < nbParticule_MAX && time - lastSpawn > (1/spawnRate)) {
             //int size = 3;
-            int size = rand() % 3 + 5;
+			lastSpawn = time;
+            int size = rand() % 10 + 7;
             sf::Vector2f pos(W / 2 - size, H / 2 - size);
-            particules.push_back(Particle(pos, sf::Vector2f(500, 0), size));
+            particules.push_back(Particle(pos, sf::Vector2f(cos(cos(count * spawnAngleSpeed)* spawnAngleWidth + spawnAngle)* spawnVelocity, sin(cos(count * spawnAngleSpeed)* spawnAngleWidth + spawnAngle)* spawnVelocity), size, ColorUtils::angleToColor(((float)nbParticule /(float)nbParticule_MAX)*360.f)));
             nbParticule++;
-            pos.x = W / 2 - size;
-            pos.y = H / 2 - size + 150;
-            particules.push_back(Particle(pos, sf::Vector2f(500, 0), size));
-            nbParticule++;
-        }
-        sf::Time dt = deltaClock.restart();//récup valeur du timer + redémmarer (fps)
-        float deltaT = dt.asSeconds();
-        float fps = 1.0f / deltaT;
-        for (int i = 0; i < 199; i++) {
-            fps_values[i] = fps_values[i + 1];
-        }
-        fps_values[199] = fps;
-        float fps_moy = 0;
-        for (int i = 0; i < 200; i++) {
-            fps_moy += fps_values[i] / 200.0f;
         }
         window.setTitle("Physic - " + std::to_string(particules.size()) + " - FPS:" + std::to_string(round(fps_moy)));
         window.clear();
+        const float radius = 500;
+        sf::CircleShape circle = sf::CircleShape(radius+5, 64);
+        circle.setPosition(sf::Vector2f(W / 2, H / 2) - sf::Vector2f(radius+5, radius+5));
+        circle.setFillColor(sf::Color(50,50,50));
+        window.draw(circle);
         //collisions
         for (int i = 0; i < particules.size(); i++) {
-            if (particules[i].pos.x < particules[i].size + margin) {
-                particules[i].pos.x = particules[i].size + margin;
-            }if (particules[i].pos.x > W - (particules[i].size + margin)) {
-                particules[i].pos.x = W - (particules[i].size + margin);
-            }
-            if (particules[i].pos.y < particules[i].size + margin) {
-                particules[i].pos.y = particules[i].size + margin;
-            }if (particules[i].pos.y > H - (particules[i].size + margin)) {
-                particules[i].pos.y = H - (particules[i].size + margin);
-            }
+            processEvtCollisionCirlce(particules[i], radius);
             particules[i].acc += sf::Vector2f(0, g);
-            for (int m = 0; m < 2; m++) {
+            for (int m = 0; m < 1; m++) {
                 for (int j = 0; j < nbParticule; j++) {
                     if (i != j) {
                         if (Vect2Maths::length(particules[i].pos - particules[j].pos) < (particules[i].size + particules[j].size)) {
@@ -188,9 +282,6 @@ int main()
 							}
                             particules[i].pos += mvt*0.75f;
                             particules[j].pos += -mvt*0.75f;
-                            float lengthMvt = Vect2Maths::length(mvt);
-                            particules[i].color = lerp(colorMin, colorMax, lengthMvt);
-                            particules[j].color = lerp(colorMin, colorMax, lengthMvt);
                         }
                     }
                 }
@@ -200,6 +291,9 @@ int main()
 
             particules[i].draw(window);
         }
+        text.setString("Particules: " + std::to_string(nbParticule) + "/" + std::to_string(nbParticule_MAX) + "\nFPS: " + to_string_custom(std::round(fps_moy)) + "\nSpeed: " + std::to_string(speed));
+		text.setPosition(-100, -100);
+		window.draw(text);
         window.display();
     }
 }

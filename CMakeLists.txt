@@ -17,6 +17,7 @@ set(SOURCES
     src/main.cpp
     src/Vector2Math.cpp
     src/TransformViewManager.cpp
+    src/ColorUtils.cpp
 )
 
 # Ajout de l'exécutable

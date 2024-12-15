@@ -2,7 +2,7 @@
 
 namespace TransformViewManager
 {
-    void TransformView(bool& moving, sf::Vector2f& oldPos, float& zoom, sf::View& view, sf::RenderWindow& window, sf::Event event) {
+    void TransformView(bool& moving, sf::Vector2f& oldPos, float& zoom, sf::View& view, sf::RenderWindow& window, sf::Event event, int W, int H) {
         switch (event.type) {
             case sf::Event::MouseButtonPressed:
             {
@@ -49,12 +49,12 @@ namespace TransformViewManager
                 // Determine the scroll direction and adjust the zoom level
                 // Again, you can swap these to invert the direction
                 if (event.mouseWheelScroll.delta <= -1)
-                    zoom = std::min(2.f, zoom + .1f);
+                    zoom = std::min(3.f, zoom + .1f);
                 else if (event.mouseWheelScroll.delta >= 1)
-                    zoom = std::max(.5f, zoom - .1f);
+                    zoom = std::max(.25f, zoom - .1f);
 
                 // Update our view
-                view.setSize(window.getDefaultView().getSize()); // Reset the size
+                view.setSize(W,H); // Reset the size
                 view.zoom(zoom); // Apply the zoom level (this transforms the view)
                 window.setView(view);
                 break;
