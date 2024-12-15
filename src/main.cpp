@@ -145,7 +145,7 @@ int main()
 
     float mvtMax = 0;
 
-    int fps_values[200];
+    int fps_values[200]{};
 
 	float spawnVelocity = 750.f;
 	float spawnAngle = 3.1415/2.0f;
@@ -153,10 +153,6 @@ int main()
 	float spawnAngleWidth = 1.f;
 
 	bool spawning = true;
-
-    for (int i = 0; i < 200; i++) {
-        fps_values[i] = 0;
-    }
 
     while (window.isOpen())
     {
