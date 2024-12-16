@@ -123,6 +123,8 @@ int main()
 	float spawnRate = 10.0f;
 	float speed = 1.0f;
 
+	int substep = 1;
+
 
     int nbParticule = 0;
     int nbParticule_MAX = 1000;
@@ -180,7 +182,7 @@ int main()
                 case sf::Event::KeyPressed:
                     if (sf::Keyboard::isKeyPressed(sf::Keyboard::Space)) {
                         for (int i = 0; i < particules.size(); i++) {
-                            int influence = 100;
+                            int influence = 200;
                             sf::Vector2f force(0, 0);
                             sf::Vector2f reltaivePos(particules[i].pos - (sf::Vector2f)window.mapPixelToCoords(sf::Mouse::getPosition(window)));
                             force = Vect2Maths::normalise(reltaivePos) * (float)(influence - std::fmin(Vect2Maths::length(reltaivePos), influence)) * 10.0f;
@@ -233,6 +235,23 @@ int main()
 							spawning = true;
 						}
 					}
+					if (sf::Keyboard::isKeyPressed(sf::Keyboard::Numpad1)) {
+                        substep = std::min(substep+1,16);
+					}
+					if (sf::Keyboard::isKeyPressed(sf::Keyboard::Numpad2)) {
+						substep = std::max(substep - 1, 1);
+					}
+					if (sf::Keyboard::isKeyPressed(sf::Keyboard::K)) {
+						for (int i = 0; i < particules.size(); i++) {
+							sf::Vector2i pixelPos = window.mapCoordsToPixel(particules[i].pos);
+							particules[i].color = sf::Color( (pixelPos.x * 255) / W, (pixelPos.y * 255) / H, 0);
+						}
+					}
+                    if (sf::Keyboard::isKeyPressed(sf::Keyboard::L)) {
+                        for (int i = 0; i < particules.size(); i++) {
+                            particules[i].color = ColorUtils::angleToColor(((float)i / (float)nbParticule_MAX) * 360.f);
+                        }
+                    }
 					break;
                 case sf::Event::Resized:
                 {
@@ -268,7 +287,7 @@ int main()
         for (int i = 0; i < particules.size(); i++) {
             processEvtCollisionCirlce(particules[i], radius);
             particules[i].acc += sf::Vector2f(0, g);
-            for (int m = 0; m < 1; m++) {
+            for (int m = 0; m < substep; m++) {
                 for (int j = 0; j < nbParticule; j++) {
                     if (i != j) {
                         if (Vect2Maths::length(particules[i].pos - particules[j].pos) < (particules[i].size + particules[j].size)) {
